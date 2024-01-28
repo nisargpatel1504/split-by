@@ -1,5 +1,5 @@
 import express from "express";
-const { addUserToGroups } = require("../controllers/groups");
+import { addUserToGroups } from "../controllers/groupController";
 const router = express.Router();
 
 router.route("/").post(addUserToGroups);

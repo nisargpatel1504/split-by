@@ -3,7 +3,7 @@ import Group from "../models/GroupModel";
 import User from "../models/UserModel";
 import { Request, Response } from "express";
 
-const addUserToGroups = async (req: Request, res: Response) => {
+export const addUserToGroups = async (req: Request, res: Response) => {
   const { userId, name } = req.body as { userId: string; name: string };
 
   try {
@@ -27,4 +27,3 @@ const addUserToGroups = async (req: Request, res: Response) => {
     res.status(500).json({ message: error.message });
   }
 };
-module.exports = { addUserToGroups };
