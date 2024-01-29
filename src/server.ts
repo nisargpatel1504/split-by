@@ -2,16 +2,19 @@ import express from "express";
 import passport from "passport";
 import session from "express-session";
 const mongoose = require("mongoose");
-
+import { setupSwagger } from "./configuration/swaggerSetup";
 import "dotenv/config";
-import groupRoutes from "./src/routes/groupRoutes";
-import { isLoggedIn } from "./src/auth/auth";
-import loginRoutes from "./src/routes/loginRoutes";
-require("./src/auth/config");
+import groupRoutes from "./routes/groupRoutes";
+import { isLoggedIn } from "./auth/auth";
+import loginRoutes from "./routes/loginRoutes";
+import expenseRoutes from "./routes/expenseRoutes";
+require("./auth/config");
 
 const app = express();
 
 app.use(express.json());
+setupSwagger(app);
+
 app.use(session({ secret: "secret", resave: false, saveUninitialized: true }));
 app.use(passport.initialize());
 app.use(passport.session());
@@ -22,6 +25,7 @@ app.get("/", isLoggedIn, (req, res) => {
 
 app.use("/groups", groupRoutes);
 app.use("/login", loginRoutes);
+app.use("/expense", expenseRoutes);
 
 // Google Auth Route
 app.get(
@@ -39,13 +43,10 @@ app.get(
 );
 
 mongoose
-  .connect(
-    "mongodb+srv://nisargpatel1504:M8WbGqSD17ZHcnsz@cluster0.4s6vxzh.mongodb.net/",
-    {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    }
-  )
+  .connect(process.env.MONGO_URL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
