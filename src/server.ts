@@ -23,9 +23,9 @@ app.get("/", isLoggedIn, (req, res) => {
   res.send("Welcome!!");
 });
 
-app.use("/groups", groupRoutes);
-app.use("/login", loginRoutes);
-app.use("/expense", expenseRoutes);
+app.use("/api/groups", groupRoutes);
+app.use("/api/login", loginRoutes);
+app.use("/api/expense", expenseRoutes);
 
 // Google Auth Route
 app.get(
