@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import Group from "../models/GroupModel";
-import User from "../models/UserModel";
-import { Request, Response, response } from "express";
+import { Request, Response } from "express";
 
 interface CreateGroupRequest {
   name: string;
