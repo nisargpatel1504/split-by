@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import Expense from "../models/ExpenseModel";
 import UserBalance from "../models/BalanceModel"; // Assuming you have a model to track balances
 
-export const createExpense = async (
+export const createPersonalExpense = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -40,7 +40,7 @@ export const createExpense = async (
   }
 };
 
-export const getExpenseById = async (
+export const getPersonalExpenseById = async (
   req: Request,
   res: Response
 ): Promise<void> => {
@@ -56,7 +56,7 @@ export const getExpenseById = async (
   }
 };
 
-export const deleteExpense = async (
+export const deletePersonalExpense = async (
   req: Request,
   res: Response
 ): Promise<void> => {
