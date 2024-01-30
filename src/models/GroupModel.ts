@@ -1,6 +1,6 @@
 import mongoose, { Model, Schema } from "mongoose";
 
-interface GroupDocument extends Document {
+export interface GroupDocument extends Document {
   name: string;
   createdBy: mongoose.Schema.Types.ObjectId;
   members: mongoose.Schema.Types.ObjectId[];

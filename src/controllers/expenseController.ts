@@ -1,6 +1,10 @@
 import { Request, Response } from "express";
 import Expense from "../models/ExpenseModel";
 import UserBalance from "../models/BalanceModel"; // Assuming you have a model to track balances
+import {
+  findExpenseById,
+  findExpenseByIdAndDelete,
+} from "../services/ExpenseService";
 
 export const createPersonalExpense = async (
   req: Request,
@@ -12,9 +16,9 @@ export const createPersonalExpense = async (
     if (isPaidByUser) {
       participants.push(payer);
     }
-    console.log(participants.length);
+
     const splitAmount = amount / participants.length;
-    console.log(splitAmount);
+
     const expense = new Expense({
       ...req.body,
     });
@@ -29,7 +33,7 @@ export const createPersonalExpense = async (
           upsert: true,
         },
       }));
-    console.log("balance updates", balanceUpdates);
+
     if (balanceUpdates.length > 0) {
       await UserBalance.bulkWrite(balanceUpdates);
     }
@@ -45,7 +49,7 @@ export const getPersonalExpenseById = async (
   res: Response
 ): Promise<void> => {
   try {
-    const expense = await Expense.find({ payer: req.params.id });
+    const expense = await findExpenseById(req.params.id);
     if (!expense) {
       res.status(404).json({ message: "Expense not found" });
       return;
@@ -64,7 +68,7 @@ export const deletePersonalExpense = async (
     // First, find the expense to get its details before deletion
     const expenseID = req.params.id;
     if (!expenseID) res.status(500).json({ message: "Invalid Id" });
-    const expense = await Expense.findById(req.params.id);
+    const expense = await findExpenseById(req.params.id);
     if (!expense) {
       res.status(404).json({ message: "Expense not found" });
       return;
@@ -97,7 +101,7 @@ export const deletePersonalExpense = async (
     }
 
     // After adjusting balances, delete the expense
-    await Expense.findOneAndDelete({ _id: expenseID });
+    await findExpenseByIdAndDelete(expenseID);
 
     res.json({ message: "Expense deleted successfully" });
   } catch (error) {

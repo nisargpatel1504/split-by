@@ -1,6 +1,12 @@
 import mongoose from "mongoose";
 import Group from "../models/GroupModel";
 import { Request, Response } from "express";
+import {
+  findGroupById,
+  findGroupByIdAndUpdate,
+  findGroupByIdAndUpdateForDelete,
+} from "../services/GroupService";
+import { formatGroupResponse } from "../utils/responseFormatter";
 
 interface CreateGroupRequest {
   name: string;
@@ -23,10 +29,6 @@ export const createGroup = async (
 ): Promise<void> => {
   try {
     const { name, currentUserId } = req.body;
-    if (!mongoose.Types.ObjectId.isValid(currentUserId) || !name.toString()) {
-      res.status(400).json({ message: "Invalid input data" });
-      return;
-    }
 
     const group = new Group({
       name,
@@ -35,12 +37,7 @@ export const createGroup = async (
     });
 
     await group.save();
-    const response: GroupResponse = {
-      id: group._id.toString(), // Convert ObjectId to string
-      name: group.name,
-      createdBy: group.createdBy.toString(), // Convert ObjectId to string
-      members: group.members.map((member) => member.toString()), // Assuming members are ObjectIds
-    };
+    const response: GroupResponse = formatGroupResponse(group);
 
     res.status(201).json(response);
   } catch (error) {
@@ -57,21 +54,11 @@ export const addMemberToGroup = async (
   const { newMemberId, adminId } = req.body;
   const { groupId } = req.params;
 
-  // Validate inputs
-  if (
-    !mongoose.Types.ObjectId.isValid(groupId) ||
-    !mongoose.Types.ObjectId.isValid(newMemberId) ||
-    !mongoose.Types.ObjectId.isValid(adminId)
-  ) {
-    res.status(400).json({ message: "Invalid input data" });
-    return;
-  }
-
   try {
     const session = await mongoose.startSession(); // Start a session for transaction
     session.startTransaction();
 
-    const group = await Group.findById(groupId).session(session);
+    const group = await findGroupById(groupId, session);
 
     if (!group) {
       await session.abortTransaction();
@@ -93,10 +80,10 @@ export const addMemberToGroup = async (
       return;
     }
 
-    const updatedGroup = await Group.findOneAndUpdate(
-      { _id: groupId },
-      { $addToSet: { members: newMemberId } },
-      { new: true, session }
+    const updatedGroup = await findGroupByIdAndUpdate(
+      groupId,
+      newMemberId,
+      session
     );
 
     if (!updatedGroup) {
@@ -106,12 +93,7 @@ export const addMemberToGroup = async (
 
     await session.commitTransaction(); // Commit the transaction
 
-    const response: GroupResponse = {
-      id: updatedGroup._id.toString(),
-      name: updatedGroup.name,
-      createdBy: updatedGroup.createdBy.toString(),
-      members: updatedGroup.members.map((member) => member.toString()),
-    };
+    const response: GroupResponse = formatGroupResponse(updatedGroup);
 
     res.status(200).json(response);
   } catch (error) {
@@ -132,21 +114,14 @@ export const removeMemberFromGroup = async (
   const { groupId, memberIdToRemove, adminId } = req.body;
   let session: mongoose.mongo.ClientSession;
   // Validate inputs
-  if (
-    !mongoose.Types.ObjectId.isValid(groupId) ||
-    !mongoose.Types.ObjectId.isValid(memberIdToRemove) ||
-    !mongoose.Types.ObjectId.isValid(adminId)
-  ) {
-    res.status(400).json({ message: "Invalid input data" });
-    return;
-  }
 
   try {
     session = await mongoose.startSession(); // Start a session for transaction
     session.startTransaction();
 
     // Check for group existence and admin rights before attempting to remove a member
-    const groupCheck = await Group.findById(groupId, null, { session });
+
+    const groupCheck = await findGroupById(groupId, session);
     if (!groupCheck) {
       await session.abortTransaction();
       res.status(404).json({ message: "Group not found" });
@@ -160,12 +135,17 @@ export const removeMemberFromGroup = async (
       });
       return;
     }
-
+    if (!groupCheck.members.includes(memberIdToRemove)) {
+      await session.abortTransaction();
+      res.status(404).json({ message: "Member not found" });
+      return;
+    }
     // Using findOneAndUpdate with $pull to ensure atomicity and avoid race conditions, and returning the updated document
-    const updatedGroup = await Group.findOneAndUpdate(
-      { _id: groupId },
-      { $pull: { members: memberIdToRemove } },
-      { new: true, session }
+
+    const updatedGroup = await findGroupByIdAndUpdateForDelete(
+      groupId,
+      memberIdToRemove,
+      session
     );
 
     if (!updatedGroup) {
@@ -175,12 +155,7 @@ export const removeMemberFromGroup = async (
 
     await session.commitTransaction(); // Commit the transaction
 
-    const response: GroupResponse = {
-      id: updatedGroup._id.toString(),
-      name: updatedGroup.name,
-      createdBy: updatedGroup.createdBy.toString(),
-      members: updatedGroup.members.map((member) => member.toString()),
-    };
+    const response: GroupResponse = formatGroupResponse(updatedGroup);
 
     res.status(200).json(response);
   } catch (error) {
