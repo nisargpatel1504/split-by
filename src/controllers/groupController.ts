@@ -7,6 +7,7 @@ import {
   findGroupByIdAndUpdateForDelete,
 } from "../services/GroupService";
 import { formatGroupResponse } from "../utils/responseFormatter";
+import { errorResponse, successResponse } from "../utils/response";
 
 interface CreateGroupRequest {
   name: string;
@@ -92,18 +93,18 @@ export const addMemberToGroup = async (
     }
 
     await session.commitTransaction(); // Commit the transaction
-
     const response: GroupResponse = formatGroupResponse(updatedGroup);
-
-    res.status(200).json(response);
+    successResponse(res, response, "Member added successfully");
   } catch (error) {
     console.error(
       "An error occurred while adding a member to the group:",
       error
     ); // Logging the error
-    res.status(500).json({
-      message: "An error occurred while adding a member to the group.",
-    });
+    errorResponse(
+      res,
+      "An error occurred while adding a member to the group.",
+      500
+    );
   }
 };
 
@@ -156,16 +157,13 @@ export const removeMemberFromGroup = async (
     await session.commitTransaction(); // Commit the transaction
 
     const response: GroupResponse = formatGroupResponse(updatedGroup);
-
-    res.status(200).json(response);
+    successResponse(res, response, "Member removed successfully");
   } catch (error) {
-    console.error(
-      "An error occurred while removing a member from the group:",
-      error
-    ); // Logging the error
-    res.status(500).json({
-      message: "An error occurred while removing a member from the group.",
-    });
+    errorResponse(
+      res,
+      "An error occurred while removing a member from the group.",
+      500
+    );
   } finally {
     await session.endSession(); // Always end the session
   }

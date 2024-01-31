@@ -1,10 +1,11 @@
-import { Request, Response } from "express";
+import { Request, Response, response } from "express";
 import Expense from "../models/ExpenseModel";
 import UserBalance from "../models/BalanceModel"; // Assuming you have a model to track balances
 import {
   findExpenseById,
   findExpenseByIdAndDelete,
 } from "../services/ExpenseService";
+import { errorResponse, successResponse } from "../utils/response";
 
 export const createPersonalExpense = async (
   req: Request,
@@ -37,10 +38,9 @@ export const createPersonalExpense = async (
     if (balanceUpdates.length > 0) {
       await UserBalance.bulkWrite(balanceUpdates);
     }
-
-    res.status(201).json(expense);
+    successResponse(res, expense, "Expense created successfully");
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    errorResponse(res, error.message);
   }
 };
 
@@ -94,7 +94,7 @@ export const deletePersonalExpense = async (
         }
       })
       .filter((op) => op !== null); // Remove null operations
-    console.log(JSON.stringify(balanceAdjustments));
+
     // Perform bulk update if there are balances to adjust
     if (balanceAdjustments.length > 0) {
       await UserBalance.bulkWrite(balanceAdjustments);
@@ -102,8 +102,7 @@ export const deletePersonalExpense = async (
 
     // After adjusting balances, delete the expense
     await findExpenseByIdAndDelete(expenseID);
-
-    res.json({ message: "Expense deleted successfully" });
+    successResponse(res, null, "Expense deleted successfully");
   } catch (error) {
     console.error("Error deleting expense:", error);
     res.status(500).json({ message: error.message });
