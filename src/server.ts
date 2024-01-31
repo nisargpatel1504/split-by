@@ -8,6 +8,7 @@ import groupRoutes from "./routes/groupRoutes";
 import { isLoggedIn } from "./auth/auth";
 import loginRoutes from "./routes/loginRoutes";
 import expenseRoutes from "./routes/expenseRoutes";
+import groupExpenseRoutes from "./routes/groupExpenseRoutes";
 require("./auth/config");
 
 const app = express();
@@ -26,7 +27,7 @@ app.get("/", isLoggedIn, (req, res) => {
 app.use("/api/groups", groupRoutes);
 app.use("/api/login", loginRoutes);
 app.use("/api/expense", expenseRoutes);
-
+app.use("/api/groupExpense", groupExpenseRoutes);
 // Google Auth Route
 app.get(
   "/auth/google",

@@ -24,3 +24,5 @@ export const isValidObjectId = (value: any): boolean =>
   mongoose.Types.ObjectId.isValid(value);
 export const isNonEmptyString = (value: any): boolean =>
   typeof value === "string" && value.trim() !== "";
+export const isNonEmptyNumber = (value: any): boolean =>
+  typeof value === "number";

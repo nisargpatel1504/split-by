@@ -5,7 +5,7 @@ interface UserDocument extends Document {
   email: string;
   name: string;
   avatarUrl?: string;
-  groups: mongoose.Types.ObjectId[]; // This should match the type you've used in the schema
+  groups: mongoose.Schema.Types.ObjectId[]; // This should match the type you've used in the schema
 }
 
 // Define the User model interface
