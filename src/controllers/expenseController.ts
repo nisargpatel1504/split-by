@@ -1,6 +1,6 @@
 import { Request, Response, response } from "express";
 import Expense from "../models/ExpenseModel";
-import UserBalance from "../models/BalanceModel"; // Assuming you have a model to track balances
+import UserBalance from "../models/UserBalanceModel"; // Assuming you have a model to track balances
 import {
   findExpenseById,
   findExpenseByIdAndDelete,

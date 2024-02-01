@@ -12,22 +12,11 @@ import {
   findUserByIdAndDeleteGroupId,
   findUserByIdAndUpdate,
 } from "../services/UserService";
-
-interface CreateGroupRequest {
-  name: string;
-  currentUserId: string; // Assuming the ID is a string, adjust if necessary
-}
-interface ErrorResponse {
-  message: string;
-}
-// If you have a specific structure for the group response, define it as well
-interface GroupResponse {
-  id: string;
-  name: string;
-  createdBy: string;
-  members: string[];
-}
-
+import { ErrorResponse } from "../interfaces/commonInterface";
+import {
+  GroupResponse,
+  CreateGroupRequest,
+} from "../interfaces/groupInterface";
 export const createGroup = async (
   req: Request<{}, {}, CreateGroupRequest>, // {} for Params and Query types if not used, then your request body type
   res: Response<GroupResponse | ErrorResponse>

@@ -1,53 +1,69 @@
 import mongoose from "mongoose";
-import UserBalance from "../models/BalanceModel";
 import { findGroupById } from "../services/GroupService";
-import { findUserByIdAndUpdate } from "../services/UserService";
+import { Request, Response } from "express";
+import { errorResponse, successResponse } from "../utils/response";
+import { updateBalancesInBulk } from "../services/UserBalanceService";
+import {
+  GroupExpenseRequest,
+  GroupExpenseResponse,
+} from "../interfaces/groupExpensesInterface";
+import { ErrorResponse } from "../interfaces/commonInterface";
+// Define interfaces for better type checking and readability
 
-export async function addExpenseToGroupAndUpdateBalances(
-  groupId,
-  payerId,
-  amount,
-  involvedMembers
-) {
+export const addExpenseToGroupAndUpdateBalances = async (
+  req: Request<{}, {}, GroupExpenseRequest>, // Using the defined interface for req.body
+  res: Response<GroupExpenseResponse | ErrorResponse>
+): Promise<void> => {
+  const { groupId, payerId, involvedMembers, amount } = req.body;
+
   const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
+    session.startTransaction();
+
     const group = await findGroupById(groupId, session);
-    if (!group.members.includes(payerId)) {
-      throw new Error("Payer is not a member of the group");
+    if (!group) {
+      throw new Error("Group not found");
     }
-    if (!group.members.includes(involvedMembers)) {
-      throw new Error("Involved members are not a member of the group");
+
+    // Validate that the payer and all involved members are part of the group
+    const allMembersValid = [payerId, ...involvedMembers].every((memberId) =>
+      group.members.map((member) => member.toString()).includes(memberId)
+    );
+
+    if (!allMembersValid) {
+      throw new Error(
+        "One or more involved members, including the payer, are not part of the group"
+      );
     }
-    // Calculate split amount
+
+    // Calculate the amount each involved member owes
     const splitAmount = amount / involvedMembers.length;
 
-    // Prepare balance updates
-    const balanceUpdates = involvedMembers
-      .map((memberId: string) => {
-        if (memberId !== payerId) {
-          return {
-            updateOne: {
-              filter: { user: memberId, owesTo: payerId, groupId },
-              update: { $inc: { amount: -splitAmount } },
-              upsert: true,
-            },
-          };
-        }
-      })
-      .filter(Boolean); // Remove non-updates
-
-    // Bulk update balances
-    if (balanceUpdates.length > 0) {
-      await UserBalance.bulkWrite(balanceUpdates, { session });
-    }
+    // Update balances in bulk
+    await updateBalancesInBulk(
+      involvedMembers,
+      payerId,
+      groupId,
+      splitAmount,
+      session
+    );
 
     await session.commitTransaction();
-    session.endSession();
+
+    // Construct the success response details
+    const responseDetails = { amount, groupId, payerId, involvedMembers };
+    successResponse(res, {
+      message: "Expense Added Successfully",
+      details: responseDetails,
+    });
   } catch (error) {
-    await session.abortTransaction();
+    // Handle all errors uniformly
+    if (session.inTransaction()) {
+      await session.abortTransaction();
+    }
+    errorResponse(res, error.message);
+  } finally {
+    // Ensure session is always ended
     session.endSession();
-    throw error;
   }
-}
+};
