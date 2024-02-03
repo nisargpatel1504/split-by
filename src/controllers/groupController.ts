@@ -8,27 +8,22 @@ import {
 } from "../services/GroupService";
 import { formatGroupResponse } from "../utils/responseFormatter";
 import { errorResponse, successResponse } from "../utils/response";
-
-interface CreateGroupRequest {
-  name: string;
-  currentUserId: string; // Assuming the ID is a string, adjust if necessary
-}
-interface ErrorResponse {
-  message: string;
-}
-// If you have a specific structure for the group response, define it as well
-interface GroupResponse {
-  id: string;
-  name: string;
-  createdBy: string;
-  members: string[];
-}
-
+import {
+  findUserByIdAndDeleteGroupId,
+  findUserByIdAndUpdate,
+} from "../services/UserService";
+import { ErrorResponse } from "../interfaces/commonInterface";
+import {
+  GroupResponse,
+  CreateGroupRequest,
+} from "../interfaces/groupInterface";
 export const createGroup = async (
   req: Request<{}, {}, CreateGroupRequest>, // {} for Params and Query types if not used, then your request body type
   res: Response<GroupResponse | ErrorResponse>
 ): Promise<void> => {
   try {
+    const session = await mongoose.startSession(); // Start a session for transaction
+    session.startTransaction();
     const { name, currentUserId } = req.body;
 
     const group = new Group({
@@ -39,8 +34,19 @@ export const createGroup = async (
 
     await group.save();
     const response: GroupResponse = formatGroupResponse(group);
+    const updatedUser = await findUserByIdAndUpdate(
+      currentUserId,
+      group.id,
+      session
+    );
+    if (!updatedUser) {
+      await session.abortTransaction();
+      session.endSession();
+      throw new Error("Failed to add group to user's profile");
+    }
+    await session.commitTransaction();
 
-    res.status(201).json(response);
+    successResponse(res, response, "Group Created Successfully");
   } catch (error) {
     res.status(400).json({
       message: "An error occurred while creating the group: " + error.message,
@@ -91,6 +97,16 @@ export const addMemberToGroup = async (
       await session.abortTransaction();
       throw new Error("Failed to add member to the group");
     }
+    const updatedUser = await findUserByIdAndUpdate(
+      newMemberId,
+      groupId,
+      session
+    );
+    if (!updatedUser) {
+      await session.abortTransaction();
+      session.endSession();
+      throw new Error("Failed to add group to user's profile");
+    }
 
     await session.commitTransaction(); // Commit the transaction
     const response: GroupResponse = formatGroupResponse(updatedGroup);
@@ -114,14 +130,12 @@ export const removeMemberFromGroup = async (
 ): Promise<void> => {
   const { groupId, memberIdToRemove, adminId } = req.body;
   let session: mongoose.mongo.ClientSession;
-  // Validate inputs
 
   try {
     session = await mongoose.startSession(); // Start a session for transaction
     session.startTransaction();
 
     // Check for group existence and admin rights before attempting to remove a member
-
     const groupCheck = await findGroupById(groupId, session);
     if (!groupCheck) {
       await session.abortTransaction();
@@ -152,6 +166,16 @@ export const removeMemberFromGroup = async (
     if (!updatedGroup) {
       await session.abortTransaction();
       throw new Error("Failed to remove member from the group");
+    }
+    const updatedUser = await findUserByIdAndDeleteGroupId(
+      memberIdToRemove,
+      groupId,
+      session
+    );
+    if (!updatedUser) {
+      await session.abortTransaction();
+      session.endSession();
+      throw new Error("Failed to remove group to user's profile");
     }
 
     await session.commitTransaction(); // Commit the transaction
