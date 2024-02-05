@@ -86,10 +86,10 @@ export const addMemberToGroup = async (
       res.status(400).json({ message: "Member is already in the group" });
       return;
     }
-
+    const updateToAddMember = { $addToSet: { members: newMemberId } };
     const updatedGroup = await findGroupByIdAndUpdate(
       groupId,
-      newMemberId,
+      updateToAddMember,
       session
     );
 

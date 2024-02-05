@@ -4,6 +4,7 @@ export interface GroupDocument extends Document {
   name: string;
   createdBy: mongoose.Schema.Types.ObjectId;
   members: mongoose.Schema.Types.ObjectId[];
+  totalExpenses: number;
   createdAt?: Date;
 }
 
@@ -17,6 +18,7 @@ const groupSchema = new Schema({
     ref: "User",
     required: true,
   },
+  totalExpenses: { type: Number, default: 0 },
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   createdAt: { type: Date, default: Date.now },
 });

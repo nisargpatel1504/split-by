@@ -1,4 +1,4 @@
-import { ClientSession } from "mongodb";
+import mongoose, { ClientSession } from "mongoose";
 import Group, { GroupDocument } from "../models/GroupModel";
 import { query } from "express";
 
@@ -21,13 +21,13 @@ export const findGroupById = async (
 
 export const findGroupByIdAndUpdate = async (
   groupId: string,
-  newMemberId: string,
-  session: ClientSession
+  update: mongoose.UpdateQuery<GroupDocument>,
+  session?: ClientSession
 ): Promise<GroupDocument | null> => {
   try {
     const query = Group.findOneAndUpdate(
       { _id: groupId },
-      { $addToSet: { members: newMemberId } },
+      { update },
       { new: true, session }
     );
     if (session) {

@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { ClientSession } from "mongoose";
 import UserBalance from "../models/UserBalanceModel"; // Ensure this path is correct
 
 /**
@@ -44,4 +44,21 @@ export const updateBalancesInBulk = async (
   }).session(session);
 
   return updatedBalances;
+};
+
+export const findUserBalanceByPayerId = async (
+  payerId: string,
+  session: ClientSession
+) => {
+  try {
+    const query = UserBalance.find({ user: payerId });
+    if (session) {
+      query.session(session);
+    }
+    const userBalance = await query;
+    return userBalance;
+  } catch (error) {
+    console.error("Error finding group by ID:", error);
+    throw error; // Rethrow the error to be handled by the caller
+  }
 };
