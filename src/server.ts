@@ -4,11 +4,15 @@ import session from "express-session";
 const mongoose = require("mongoose");
 import { setupSwagger } from "./configuration/swaggerSetup";
 import "dotenv/config";
-import groupRoutes from "./routes/groupRoutes";
+
 import { isLoggedIn } from "./auth/auth";
-import loginRoutes from "./routes/loginRoutes";
-import expenseRoutes from "./routes/expenseRoutes";
-import groupExpenseRoutes from "./routes/groupExpenseRoutes";
+import {
+  groupRoutes,
+  loginRoutes,
+  expenseRoutes,
+  groupExpenseRoutes,
+  userBalanceRoutes,
+} from "./routes/index";
 
 require("./auth/config");
 
@@ -29,6 +33,7 @@ app.use("/api/groups", groupRoutes);
 app.use("/api/login", loginRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/group-expenses", groupExpenseRoutes);
+app.use("/api/user-balance", userBalanceRoutes);
 // Google Auth Route
 app.get(
   "/auth/google",
