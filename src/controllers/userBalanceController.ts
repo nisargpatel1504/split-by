@@ -15,17 +15,20 @@ export const getUserBalance = async (
   const cacheKey: string = `userBalance:${payerId}`;
   const cachedData: string | null = await redisClient.get(cacheKey);
 
-  if (cachedData) {
-    return successResponse(res, {
-      message: "Expense Added Successfully",
-      details: JSON.parse(cachedData),
-    });
-  }
-
   // If not in cache, fetch from database and cache the result
   try {
     const userBalance = await findUserBalanceByPayerId(payerId, null);
-    await redisClient.setEx(cacheKey, 3600, JSON.stringify(userBalance));
+
+    if (!userBalance) {
+      return successResponse(res, "No details found");
+    }
+    // if (cachedData.length) {
+    //   return successResponse(res, {
+    //     message: "User balance fetched successfully",
+    //     details: JSON.parse(cachedData),
+    //   });
+    // }
+
     return successResponse(res, {
       details: userBalance,
       message: "User Balance Data",

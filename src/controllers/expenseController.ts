@@ -6,44 +6,113 @@ import {
   findExpenseByIdAndDelete,
 } from "../services/ExpenseService";
 import { errorResponse, successResponse } from "../utils/response";
+import mongoose from "mongoose";
 
+const adjustUserBalance = async (
+  userId: string,
+  owesToId: string,
+  amount: number,
+  session: mongoose.ClientSession
+) => {
+  let userOwesToBalance = await UserBalance.findOne({
+    user: userId,
+    owesTo: owesToId,
+  }).session(session);
+
+  let owesToUserBalance = await UserBalance.findOne({
+    user: owesToId,
+    owesTo: userId,
+  }).session(session);
+
+  // Calculate the net balance considering both directions and the new transaction amount
+  let netAmount =
+    (userOwesToBalance ? userOwesToBalance.amount : 0) +
+    (owesToUserBalance ? -owesToUserBalance.amount : 0) +
+    amount;
+
+  // Decide the direction of the net balance
+  if (netAmount < 0) {
+    // User owes to owesToId
+    if (!userOwesToBalance) {
+      // Create a new balance if it doesn't exist
+      userOwesToBalance = new UserBalance({
+        user: userId,
+        owesTo: owesToId,
+        amount: netAmount,
+      });
+      await userOwesToBalance.save({ session });
+    } else {
+      // Update the existing balance
+      userOwesToBalance.amount = netAmount;
+      await userOwesToBalance.save({ session });
+    }
+    // Delete the reverse balance if it exists, as it's settled by this transaction
+    if (owesToUserBalance) {
+      await owesToUserBalance.deleteOne({ session });
+    }
+  } else if (netAmount > 0) {
+    // owesToId owes to User
+    if (!owesToUserBalance) {
+      // Create a new balance in the reverse direction if it doesn't exist
+      owesToUserBalance = new UserBalance({
+        user: owesToId,
+        owesTo: userId,
+        amount: netAmount,
+      });
+      await owesToUserBalance.save({ session });
+    } else {
+      // Update the existing reverse balance
+      owesToUserBalance.amount = netAmount;
+      await owesToUserBalance.save({ session });
+    }
+    // Delete the original balance if it exists, as it's settled by this transaction
+    if (userOwesToBalance) {
+      await userOwesToBalance.deleteOne({ session });
+    }
+  } else {
+    // Balances are settled
+    if (userOwesToBalance) {
+      await userOwesToBalance.deleteOne({ session });
+    }
+    if (owesToUserBalance) {
+      await owesToUserBalance.deleteOne({ session });
+    }
+  }
+};
 export const createPersonalExpense = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const session = await mongoose.startSession();
   try {
-    const { payer, amount, participants, isPaidByUser } = req.body;
+    session.startTransaction();
+    const { payer, amount, participants, isPaidByUser, category, description } =
+      req.body;
 
-    if (isPaidByUser) {
-      participants.push(payer);
-    }
-
-    const splitAmount = amount / participants.length;
+    const splitAmount = isPaidByUser ? amount / 2 : amount;
 
     const expense = new Expense({
-      ...req.body,
+      payer,
+      amount,
+      participants,
+      category,
+      description,
     });
-    await expense.save();
+    await expense.save({ session });
 
-    const balanceUpdates = participants
-      .filter((participantId: string) => participantId !== payer)
-      .map((participantId: string) => ({
-        updateOne: {
-          filter: { user: participantId, owesTo: payer },
-          update: { $inc: { amount: -splitAmount } },
-          upsert: true,
-        },
-      }));
+    // Adjust user balances
+    const amountToAdjust = -splitAmount; // The participant owes this amount to the payer
+    await adjustUserBalance(participants, payer, amountToAdjust, session);
 
-    if (balanceUpdates.length > 0) {
-      await UserBalance.bulkWrite(balanceUpdates);
-    }
+    await session.commitTransaction();
     successResponse(res, expense, "Expense created successfully");
   } catch (error) {
+    await session.abortTransaction();
     errorResponse(res, error.message);
+  } finally {
+    session.endSession();
   }
 };
-
 export const getPersonalExpenseById = async (
   req: Request,
   res: Response
