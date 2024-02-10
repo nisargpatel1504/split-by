@@ -17,8 +17,24 @@ import {
   GroupResponse,
   CreateGroupRequest,
 } from "../interfaces/groupInterface";
+import { findGroupsByUserId } from "../services/GroupService"; // Adjust the import path as needed
+
+export const getGroupsByUserId = async (
+  req: Request, // {} for Params and Query types if not used, then your request body type
+  res: Response<GroupResponse | ErrorResponse>
+): Promise<void> => {
+  const { userId } = req.params; // Assuming the user ID comes from the route parameter
+
+  try {
+    const groups = await findGroupsByUserId(userId);
+    return successResponse(res, groups, "Data get successfully");
+  } catch (error) {
+    return errorResponse(res, "Failed to fetch groups for the user", 500);
+  }
+};
+
 export const createGroup = async (
-  req: Request<{}, {}, CreateGroupRequest>, // {} for Params and Query types if not used, then your request body type
+  req: Request, // {} for Params and Query types if not used, then your request body type
   res: Response<GroupResponse | ErrorResponse>
 ): Promise<void> => {
   try {
@@ -181,9 +197,9 @@ export const removeMemberFromGroup = async (
     await session.commitTransaction(); // Commit the transaction
 
     const response: GroupResponse = formatGroupResponse(updatedGroup);
-    successResponse(res, response, "Member removed successfully");
+    return successResponse(res, response, "Member removed successfully");
   } catch (error) {
-    errorResponse(
+    return errorResponse(
       res,
       "An error occurred while removing a member from the group.",
       500

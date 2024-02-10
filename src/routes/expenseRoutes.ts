@@ -10,13 +10,16 @@ import {
   isValidObjectId,
   isNonEmptyString,
   isNonEmptyNumber,
+  isBoolean,
+  areValidObjectIds,
 } from "../utils/validationInputs";
 
 router.route("/").post(
   validateInputs({
-    groupId: isValidObjectId,
-    newMemberId: isValidObjectId,
-    adminId: isValidObjectId,
+    payer: isValidObjectId,
+    participants: areValidObjectIds,
+    amount: isNonEmptyNumber,
+    isPaidByUser: isBoolean,
   }),
   createPersonalExpense
 );

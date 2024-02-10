@@ -46,7 +46,7 @@ export const addExpenseToGroupAndUpdateBalances = async (
     // Calculate the amount each involved member owes
     const splitAmount = amount / involvedMembers.length;
     const updateForTotalExpense = { $inc: { totalExpenses: amount } };
-
+    console.log(updateForTotalExpense);
     await findGroupByIdAndUpdate(groupId, updateForTotalExpense, session);
     // Update balances in bulk
     const userBalance = await updateBalancesInBulk(

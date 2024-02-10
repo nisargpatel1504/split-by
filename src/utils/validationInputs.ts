@@ -40,6 +40,10 @@ export const isNonEmptyNumber = (value: any): boolean => {
   return isValid;
 };
 
+export const isBoolean = (value: any): boolean => {
+  return typeof value === "boolean";
+};
+
 export const areValidObjectIds = (values) => {
   const isValid =
     Array.isArray(values) &&
