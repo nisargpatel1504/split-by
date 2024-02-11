@@ -22,12 +22,6 @@ export const getUserBalance = async (
     if (!userBalance) {
       return successResponse(res, "No details found");
     }
-    // if (cachedData.length) {
-    //   return successResponse(res, {
-    //     message: "User balance fetched successfully",
-    //     details: JSON.parse(cachedData),
-    //   });
-    // }
 
     return successResponse(res, {
       details: userBalance,
