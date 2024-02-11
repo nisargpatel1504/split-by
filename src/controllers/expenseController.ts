@@ -79,6 +79,7 @@ const adjustUserBalance = async (
     }
   }
 };
+
 export const createPersonalExpense = async (
   req: Request,
   res: Response
