@@ -3,7 +3,11 @@ import {
   isNonEmptyNumber,
   areValidObjectIds,
 } from "../utils/validationInputs";
-import { addExpenseToGroupAndUpdateBalances } from "../controllers/groupExpenseController";
+import {
+  addExpenseToGroupAndUpdateBalances,
+  addGroupExpense,
+  getGroupUserBalance,
+} from "../controllers/groupExpenseController";
 import { isValidObjectId } from "mongoose";
 import express from "express";
 const router = express.Router();
@@ -17,6 +21,16 @@ router.route("/").post(
     involvedMembers: areValidObjectIds,
   }),
   addExpenseToGroupAndUpdateBalances
+);
+
+router.route("/:groupId").post(
+  validateInputs({
+    groupId: isValidObjectId,
+    paidBy: isValidObjectId,
+    amount: isNonEmptyNumber,
+    participants: areValidObjectIds,
+  }),
+  addGroupExpense
 );
 
 export default router;
