@@ -3,6 +3,8 @@ export interface GroupExpenseRequest {
   payerId: string;
   involvedMembers: string[];
   amount: number;
+  category: string;
+  description: string;
 }
 
 export interface GroupExpenseResponse {

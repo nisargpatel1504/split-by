@@ -1,28 +1,32 @@
-import mongoose from "mongoose";
+import mongoose, { Types } from "mongoose";
 import {
   findGroupById,
   findGroupByIdAndUpdate,
 } from "../services/GroupService";
 import { Request, Response } from "express";
 import { errorResponse, successResponse } from "../utils/response";
+
 import {
-  findUserBalanceByPayerId,
-  updateBalancesInBulk,
-} from "../services/UserBalanceService";
+  findGroupBalanceById,
+  updateGroupBalancesInBulk,
+} from "../services/GroupBalanceService";
 import {
   GroupExpenseRequest,
   GroupExpenseResponse,
 } from "../interfaces/groupExpensesInterface";
 import { ErrorResponse } from "../interfaces/commonInterface";
 import redisClient from "../utils/redisClient";
+import GroupBalance from "../models/GroupBalanceModel";
+import { calculateUpdatedBalances } from "../utils/groupBalanceHelpers";
 // Define interfaces for better type checking and readability
 
 export const addExpenseToGroupAndUpdateBalances = async (
   req: Request<{}, {}, GroupExpenseRequest>, // Using the defined interface for req.body
   res: Response<GroupExpenseResponse | ErrorResponse>
 ): Promise<void> => {
-  const { groupId, payerId, involvedMembers, amount } = req.body;
-
+  // const { groupId, payerId, involvedMembers, amount } = req.body;
+  const { payerId, groupId, amount, involvedMembers, category, description } =
+    req.body;
   const session = await mongoose.startSession();
   try {
     session.startTransaction();
@@ -46,29 +50,35 @@ export const addExpenseToGroupAndUpdateBalances = async (
     // Calculate the amount each involved member owes
     const splitAmount = amount / involvedMembers.length;
     const updateForTotalExpense = { $inc: { totalExpenses: amount } };
-    console.log(updateForTotalExpense);
+
     await findGroupByIdAndUpdate(groupId, updateForTotalExpense, session);
     // Update balances in bulk
-    const userBalance = await updateBalancesInBulk(
+    const userBalance = await updateGroupBalancesInBulk(
       involvedMembers,
       payerId,
       groupId,
       splitAmount,
+      description,
+      category,
       session
     );
 
     await session.commitTransaction();
 
     // Construct the success response details
-    const responseDetails = { amount, groupId, payerId, involvedMembers };
+    const responseDetails = {
+      amount,
+      groupId,
+      payerId,
+      involvedMembers,
+      description,
+      category,
+    };
 
     const cacheKey: string = `userBalance:${payerId}`;
     await redisClient.setEx(cacheKey, 3600, JSON.stringify(userBalance));
 
-    return successResponse(res, {
-      message: "Expense Added Successfully",
-      details: responseDetails,
-    });
+    return successResponse(res, responseDetails, "Expense Added Successfully");
   } catch (error) {
     // Handle all errors uniformly
     if (session.inTransaction()) {
@@ -77,6 +87,83 @@ export const addExpenseToGroupAndUpdateBalances = async (
     return errorResponse(res, error.message);
   } finally {
     // Ensure session is always ended
+    session.endSession();
+  }
+};
+
+export const getGroupUserBalance = async (
+  req: Request,
+  res: Response<GroupExpenseResponse | ErrorResponse>
+): Promise<void> => {
+  const { groupId } = req.params;
+
+  // Try to fetch from cache first
+  const cacheKey: string = `userBalance:${groupId}`;
+  const cachedData: string | null = await redisClient.get(cacheKey);
+
+  // If not in cache, fetch from database and cache the result
+  try {
+    const userBalance = await findGroupBalanceById(groupId, null);
+
+    if (!userBalance) {
+      return successResponse(res, "No details found");
+    }
+
+    return successResponse(res, userBalance, "Group Balance Data");
+  } catch (error) {
+    errorResponse(res, error.message);
+  }
+};
+
+export const addGroupExpense = async (req: Request, res: Response) => {
+  const { groupId, paidBy, amount, timestamp, participants } =
+    req.body || req.params;
+  const session = await mongoose.startSession();
+
+  try {
+    session.startTransaction();
+
+    let groupBalance = await GroupBalance.findOne({ group: groupId }).session(
+      session
+    );
+
+    if (!groupBalance) {
+      groupBalance = new GroupBalance({
+        group: groupId,
+        transactions: [],
+        balances: [],
+      });
+    }
+
+    groupBalance.transactions.push({ paidBy, amount, timestamp, participants });
+
+    // Calculate each participant's share
+    const share = amount / participants.length;
+
+    // Calculate updated balances
+    const updatedBalances = calculateUpdatedBalances(
+      groupBalance.balances,
+      new Types.ObjectId(paidBy),
+      amount,
+      participants.map((id) => new Types.ObjectId(id)),
+      share
+    );
+
+    // Update the groupBalance with the new balances
+    groupBalance.balances = updatedBalances;
+
+    await groupBalance.save({ session });
+    await session.commitTransaction();
+
+    return successResponse(
+      res,
+      groupBalance,
+      "Group expense added successfully"
+    );
+  } catch (error) {
+    await session.abortTransaction();
+    return errorResponse(res, "Failed to add group expense", 500);
+  } finally {
     session.endSession();
   }
 };
