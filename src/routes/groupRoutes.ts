@@ -6,6 +6,7 @@ import {
 } from "../controllers/groupController";
 import { isNonEmptyString, validateInputs } from "../utils/validationInputs";
 import { isValidObjectId } from "mongoose";
+import { checkGroupExistence } from "../middleware/checkGroupExistence";
 const router = express.Router();
 
 router.route("/").post(
@@ -24,12 +25,13 @@ router.route("/:groupId/members").post(
   }),
   addMemberToGroup
 );
-router.route("/removeMembers").delete(
+router.route("/removeMembers/:groupId").delete(
+  checkGroupExistence,
   validateInputs({
-    groupId: isValidObjectId,
     adminId: isValidObjectId,
     memberIdToRemove: isValidObjectId,
   }),
+
   removeMemberFromGroup
 );
 

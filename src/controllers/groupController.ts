@@ -18,6 +18,7 @@ import {
   CreateGroupRequest,
 } from "../interfaces/groupInterface";
 import { findGroupsByUserId } from "../services/GroupService"; // Adjust the import path as needed
+import { startTransaction } from "../utils/databaseHelper";
 
 export const getGroupsByUserId = async (
   req: Request, // {} for Params and Query types if not used, then your request body type
@@ -145,32 +146,17 @@ export const removeMemberFromGroup = async (
   res: Response<GroupResponse | ErrorResponse>
 ): Promise<void> => {
   const { groupId, memberIdToRemove, adminId } = req.body;
-  let session: mongoose.mongo.ClientSession;
-
+  const session = await startTransaction();
   try {
-    session = await mongoose.startSession(); // Start a session for transaction
-    session.startTransaction();
+    // Start a session for transaction
 
     // Check for group existence and admin rights before attempting to remove a member
-    const groupCheck = await findGroupById(groupId, session);
-    if (!groupCheck) {
-      await session.abortTransaction();
-      res.status(404).json({ message: "Group not found" });
-      return;
-    }
 
-    if (adminId !== groupCheck.createdBy.toString()) {
-      await session.abortTransaction();
-      res.status(403).json({
-        message: "User has no right to remove members from the group",
-      });
-      return;
-    }
-    if (!groupCheck.members.includes(memberIdToRemove)) {
-      await session.abortTransaction();
-      res.status(404).json({ message: "Member not found" });
-      return;
-    }
+    // if (!groupCheck.members.includes(memberIdToRemove)) {
+    //   await session.abortTransaction();
+    //   res.status(404).json({ message: "Member not found" });
+    //   return;
+    // }
     // Using findOneAndUpdate with $pull to ensure atomicity and avoid race conditions, and returning the updated document
 
     const updatedGroup = await findGroupByIdAndUpdateForDelete(
@@ -179,19 +165,14 @@ export const removeMemberFromGroup = async (
       session
     );
 
-    if (!updatedGroup) {
-      await session.abortTransaction();
-      throw new Error("Failed to remove member from the group");
-    }
     const updatedUser = await findUserByIdAndDeleteGroupId(
       memberIdToRemove,
       groupId,
       session
     );
-    if (!updatedUser) {
+    if (!updatedGroup || !updatedUser) {
       await session.abortTransaction();
-      session.endSession();
-      throw new Error("Failed to remove group to user's profile");
+      throw new Error("Failed to update group or user");
     }
 
     await session.commitTransaction(); // Commit the transaction
@@ -205,6 +186,6 @@ export const removeMemberFromGroup = async (
       500
     );
   } finally {
-    await session.endSession(); // Always end the session
+    session?.endSession(); // Always end the session
   }
 };

@@ -18,6 +18,8 @@ import { ErrorResponse } from "../interfaces/commonInterface";
 import redisClient from "../utils/redisClient";
 import GroupBalance from "../models/GroupBalanceModel";
 import { calculateUpdatedBalances } from "../utils/groupBalanceHelpers";
+import { startTransaction } from "../utils/databaseHelper";
+import { handleTransactionError } from "../utils/handleError";
 // Define interfaces for better type checking and readability
 
 export const addExpenseToGroupAndUpdateBalances = async (
@@ -118,11 +120,8 @@ export const getGroupUserBalance = async (
 export const addGroupExpense = async (req: Request, res: Response) => {
   const { groupId, paidBy, amount, timestamp, participants } =
     req.body || req.params;
-  const session = await mongoose.startSession();
-
+  const session = await startTransaction();
   try {
-    session.startTransaction();
-
     let groupBalance = await GroupBalance.findOne({ group: groupId }).session(
       session
     );
@@ -161,7 +160,7 @@ export const addGroupExpense = async (req: Request, res: Response) => {
       "Group expense added successfully"
     );
   } catch (error) {
-    await session.abortTransaction();
+    await handleTransactionError(session, res, "Failed to add group expense");
     return errorResponse(res, "Failed to add group expense", 500);
   } finally {
     session.endSession();

@@ -62,10 +62,14 @@ export const findGroupByIdAndUpdateForDelete = async (
   }
 };
 
-export const findGroupsByUserId = async (userId: string): Promise<GroupDocument[]> => {
+export const findGroupsByUserId = async (
+  userId: string
+): Promise<GroupDocument[]> => {
   try {
     const userObjectId = new mongoose.Types.ObjectId(userId);
-    const groups = await Group.find({ members: { $in: [userObjectId] } }).exec();
+    const groups = await Group.find({
+      members: { $in: [userObjectId] },
+    }).exec();
     return groups;
   } catch (error) {
     console.error("Error finding groups by user ID:", error);

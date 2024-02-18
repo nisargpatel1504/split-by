@@ -1,9 +1,8 @@
 import express from "express";
 import {
-  createPersonalExpense,
-  deletePersonalExpense,
-  getPersonalExpenseById,
-} from "../controllers/expenseController";
+  addPersonalExpense,
+  getPersonalExpensesByUserId,
+} from "../controllers/personalExpenseController";
 const router = express.Router();
 import {
   validateInputs,
@@ -16,28 +15,14 @@ import {
 
 router.route("/").post(
   validateInputs({
-    payer: isValidObjectId,
-    participants: areValidObjectIds,
+    fromUserId: isValidObjectId,
+    toUserId: isValidObjectId,
     amount: isNonEmptyNumber,
-    isPaidByUser: isBoolean,
+    description: isNonEmptyString,
   }),
-  createPersonalExpense
+  addPersonalExpense
 );
 
-router
-  .route("/:id")
-  .get(
-    validateInputs({
-      payer: isNonEmptyString,
-    }),
-    getPersonalExpenseById
-  )
-  .delete(
-    validateInputs({
-      payer: isNonEmptyString,
-    }),
-    deletePersonalExpense
-  );
-// router.route('/').get()
+router.route("/:userId").get(getPersonalExpensesByUserId);
 
 export default router;

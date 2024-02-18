@@ -13,15 +13,15 @@ import express from "express";
 const router = express.Router();
 
 //Routes for adding expenses to Group and Updating User Balance
-router.route("/").post(
-  validateInputs({
-    groupId: isValidObjectId,
-    payerId: isValidObjectId,
-    amount: isNonEmptyNumber,
-    involvedMembers: areValidObjectIds,
-  }),
-  addExpenseToGroupAndUpdateBalances
-);
+// router.route("/").post(
+//   validateInputs({
+//     groupId: isValidObjectId,
+//     payerId: isValidObjectId,
+//     amount: isNonEmptyNumber,
+//     involvedMembers: areValidObjectIds,
+//   }),
+//   addExpenseToGroupAndUpdateBalances
+// );
 
 router.route("/:groupId").post(
   validateInputs({
