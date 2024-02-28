@@ -2,9 +2,10 @@ import { Response } from "express";
 export const successResponse = (
   res: Response,
   data: any,
-  message: string = "Success"
+  message: string = "Fetched successfully",
+  status: string = "Success"
 ) => {
-  res.status(201).json({ message, data });
+  res.status(201).json({ status, data, message });
 };
 
 export const errorResponse = (

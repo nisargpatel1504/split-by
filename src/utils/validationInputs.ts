@@ -20,7 +20,6 @@ export const validateInputs = (validationRules: ValidationRules) => {
 
 export const isValidObjectId = (value: any): boolean => {
   const isValid = mongoose.Types.ObjectId.isValid(value);
-  console.log(`Validating ObjectId: ${value}, isValid: ${isValid}`);
   return isValid;
 };
 

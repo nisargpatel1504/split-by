@@ -62,3 +62,7 @@ export const findUserBalanceByPayerId = async (
     throw error; // Rethrow the error to be handled by the caller
   }
 };
+
+export async function fetchAllUserBalances(userId: string) {
+  return UserBalance.find({ users: userId }).exec();
+}

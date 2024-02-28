@@ -3,6 +3,11 @@ import { errorResponse, successResponse } from "../utils/response";
 
 import { findOrCreateNetBalance } from "../utils/personalExpenseHelper";
 import UserBalance from "../models/UserBalanceModel";
+import User from "../models/UserModel";
+import {
+  BalanceSummary,
+  BalanceEntry,
+} from "../interfaces/personalExpenseInterface";
 
 export const addPersonalExpense = async (
   req: Request,
@@ -33,18 +38,6 @@ export const addPersonalExpense = async (
     return errorResponse(res, "Error in adding expenses");
   }
 };
-interface BalanceSummary {
-  [otherUserId: string]: {
-    owes: number;
-    owed: number;
-  };
-}
-
-interface BalanceEntry {
-  otherUserId: string;
-  owes: number;
-  owed: number;
-}
 
 export const getPersonalExpensesByUserId = async (
   req: Request,
@@ -55,43 +48,56 @@ export const getPersonalExpensesByUserId = async (
   try {
     const balances = await UserBalance.find({ users: userId });
 
-    // Use the BalanceSummary interface for the accumulator
+    // First, create the summary object
     const summary: BalanceSummary = balances.reduce(
       (acc: BalanceSummary, balance) => {
         const otherUserId = balance.users
           .find((id) => id.toString() !== userId)
-          .toString(); // Ensure toString() for comparison
-        const userIndex = balance.users
-          .map((id) => id.toString())
-          .indexOf(userId); // Convert ObjectIds to strings
+          .toString();
         const balanceAmount =
-          userIndex === 0 ? balance.balance : -balance.balance;
-
-        acc[otherUserId] = acc[otherUserId] || { owes: 0, owed: 0 }; // Initialize if not already present
-
+          balance.users[0].toString() === userId
+            ? balance.balance
+            : -balance.balance;
+        acc[otherUserId] = acc[otherUserId] || { owes: 0, owed: 0 };
         if (balanceAmount > 0) {
           acc[otherUserId].owed += balanceAmount;
-        } else if (balanceAmount < 0) {
+        } else {
           acc[otherUserId].owes += Math.abs(balanceAmount);
         }
-
         return acc;
       },
       {}
     );
 
-    // Convert the summary object into an array of BalanceEntry
-    const balanceSummary: BalanceEntry[] = Object.entries(summary).map(
-      ([otherUserId, { owes, owed }]) => ({
-        otherUserId,
-        owes,
-        owed,
-      })
+    // Then, enhance the summary with user details
+    const balanceEntries: Promise<BalanceEntry>[] = Object.keys(summary).map(
+      async (otherUserId) => {
+        const user = await User.findById(userId)
+          .select("+name +email +avatarUrl") // Include fields if they were excluded by default
+          .populate("groups");
+        console.log(user);
+        const { owes, owed } = summary[otherUserId];
+        return {
+          otherUserId,
+          userDetails: user
+            ? { name: user.name, email: user.email }
+            : undefined,
+          owes,
+          owed,
+        };
+      }
     );
 
-    successResponse(res, balanceSummary);
+    // Resolve all promises to get the final array of balance entries
+    const resolvedBalanceEntries = await Promise.all(balanceEntries);
+
+    return successResponse(
+      res,
+      resolvedBalanceEntries,
+      "Fetched personal expenses"
+    );
   } catch (error) {
     console.error("Failed to fetch personal expenses:", error);
-    res.status(500).json({ message: "Failed to fetch personal expenses" });
+    return errorResponse(res, "Failed to fetch personal expenses", 500);
   }
 };
