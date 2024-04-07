@@ -1,7 +1,3 @@
-Creating a comprehensive README for your expense tracker (Split-by) application is crucial for users and developers to understand its purpose, setup, and how to use it effectively. Below is a template README file tailored to your Split-by application, including the endpoints you've provided.
-
----
-
 # Split-by: Expense Tracker Application
 
 Split-by is an expense tracker application designed to simplify the process of managing shared expenses among friends, family, or colleagues. It allows users to track personal and group expenses, making it easy to see who owes whom and how much.
@@ -100,4 +96,4 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE_LI
 
 ---
 
-Remember to replace placeholders like `https://github.com/yourusername/split-by.git`, `[CONTRIBUTING.md](CONTRIBUTING_LINK)`, and `[LICENSE.md](LICENSE_LINK)` with actual links relevant to your project. This README template provides a solid foundation, but feel free to customize it to better fit your project's needs.
+Remember to replace placeholders like `https://github.com/yourusername/split-by.git`, `[CONTRIBUTING.md](CONTRIBUTING_LINK)`, and `[LICENSE.md](LICENSE_LINK)` with actual links relevant to your project.
